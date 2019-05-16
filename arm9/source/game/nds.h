@@ -20,6 +20,9 @@
 #define TWL_UNITCODE_TWLNTR 0x02
 #define TWL_UNITCODE_TWL    0x03
 
+// see https://github.com/devkitPro/ndstool/blob/313b0be6440d3087b6d433c3ea057605d2c95197/source/header.cpp#L585-L595
+#define NDS_ARM9_FOOTER_MAGIC 0xDEC00621
+
 // see: http://problemkaputt.de/gbatek.htm#dscartridgeicontitle
 typedef struct {
     u16 version;
@@ -87,7 +90,11 @@ typedef struct {
     u64 secure_area_disable;
     u32 ntr_rom_size; // in byte
     u32 header_size;
-    u8  reserved1[56];
+    u32 arm9_param_tbl_offset;
+    u32 arm7_param_tbl_offset;
+    u16 ntr_rom_region_end;
+    u16 twl_rom_region_start;
+    u8  reserved1[44];
     u8  logo[156];
     u16 logo_crc;
     u16 header_crc;

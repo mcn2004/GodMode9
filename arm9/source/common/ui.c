@@ -18,6 +18,7 @@
 #define STRBUF_SIZE 512 // maximum size of the string buffer
 #define FONT_MAX_WIDTH 8
 #define FONT_MAX_HEIGHT 10
+#define PROGRESS_REFRESH_RATE 30 // the progress bar is only allowed to draw to screen every X milliseconds 
 
 static u32 font_width = 0;
 static u32 font_height = 0;
@@ -597,6 +598,96 @@ u32 ShowSelectPrompt(u32 n, const char** options, const char *format, ...) {
     return (sel >= n) ? 0 : sel + 1;
 }
 
+u32 ShowFileScrollPrompt(u32 n, const DirEntry** options, bool hide_ext, const char *format, ...) {
+    u32 str_height, fname_len;
+    u32 x, y, yopt;
+    const u32 item_width = SCREEN_WIDTH(MAIN_SCREEN) - 40;
+    int sel = 0, scroll = 0;
+    u32 n_show = min(n, 10);
+    
+    char str[STRBUF_SIZE] = { 0 };
+    va_list va;
+    va_start(va, format);
+    vsnprintf(str, STRBUF_SIZE, format, va);
+    va_end(va);
+    
+    if (n == 0) return 0; // check for low number of options
+    // else if (n == 1) return ShowPrompt(true, "%s\n%s?", str, options[0]) ? 1 : 0;
+    
+    str_height = GetDrawStringHeight(str) + (n_show * (line_height + 2)) + (4 * line_height);
+    x = (SCREEN_WIDTH_MAIN - item_width) / 2;
+    y = (str_height >= SCREEN_HEIGHT) ? 0 : (SCREEN_HEIGHT - str_height) / 2;
+    yopt = y + GetDrawStringHeight(str) + 8;
+    fname_len = min(64, item_width / FONT_WIDTH_EXT - 14);
+    
+    ClearScreenF(true, false, COLOR_STD_BG);
+    DrawStringF(MAIN_SCREEN, x, y, COLOR_STD_FONT, COLOR_STD_BG, "%s", str);
+    DrawStringF(MAIN_SCREEN, x, yopt + (n_show*(line_height+2)) + line_height, COLOR_STD_FONT, COLOR_STD_BG, "(<A> select, <B> cancel)");
+    while (true) {
+        for (u32 i = scroll; i < scroll+n_show; i++) {
+            char bytestr[16];
+            FormatBytes(bytestr, options[i]->size);
+            
+            char content_str[64 + 1];
+            char temp_str[256];
+            strncpy(temp_str, options[i]->name, 255);
+            
+            char* dot = strrchr(temp_str, '.');
+            if (hide_ext && dot) *dot = '\0';
+            
+            ResizeString(content_str, temp_str, fname_len, 8, false);
+            
+            DrawStringF(MAIN_SCREEN, x, yopt + ((line_height+2)*(i-scroll)),
+                (sel == (int)i) ? COLOR_STD_FONT : COLOR_ENTRY(options[i]), COLOR_STD_BG, "%2.2s %s",
+                (sel == (int)i) ? "->" : "", content_str);
+                
+            DrawStringF(MAIN_SCREEN, x + item_width - font_width * 11, yopt + ((line_height+2)*(i-scroll)),
+                (sel == (int)i) ? COLOR_STD_FONT : COLOR_ENTRY(options[i]), COLOR_STD_BG, "%10.10s",
+                (options[i]->type == T_DIR) ? "(dir)" : (options[i]->type == T_DOTDOT) ? "(..)" : bytestr);
+        }
+        // show [n more]
+        if (n - n_show - scroll) {
+            char more_str[64 + 1];
+            snprintf(more_str, 64, "   [%d more]", (int)(n - (n_show-1) - scroll));
+            DrawStringF(MAIN_SCREEN, x, yopt + (line_height+2)*(n_show-1), COLOR_LIGHTGREY, COLOR_STD_BG, "%-*s", item_width / font_width, more_str);
+        }
+        // show scroll bar
+        u32 bar_x = x + item_width + 2;
+        const u32 flist_height = (n_show * (line_height + 2));
+        const u32 bar_width = 2;
+        if (n > n_show) { // draw position bar at the right
+            const u32 bar_height_min = 32;
+            u32 bar_height = (n_show * flist_height) / n;
+            if (bar_height < bar_height_min) bar_height = bar_height_min;
+            const u32 bar_y = ((u64) scroll * (flist_height - bar_height)) / (n - n_show) + yopt;
+            
+            DrawRectangle(MAIN_SCREEN, bar_x, yopt, bar_width, (bar_y - yopt), COLOR_STD_BG);
+            DrawRectangle(MAIN_SCREEN, bar_x, bar_y + bar_height, bar_width, SCREEN_HEIGHT - (bar_y + bar_height), COLOR_STD_BG);
+            DrawRectangle(MAIN_SCREEN, bar_x, bar_y, bar_width, bar_height, COLOR_SIDE_BAR);
+        } else DrawRectangle(MAIN_SCREEN, bar_x, yopt, bar_width, flist_height, COLOR_STD_BG);
+        
+        u32 pad_state = InputWait(0);
+        if (pad_state & BUTTON_DOWN) sel++;
+        else if (pad_state & BUTTON_UP) sel--;
+        else if (pad_state & BUTTON_RIGHT) sel += n_show;
+        else if (pad_state & BUTTON_LEFT) sel -= n_show;
+        else if (pad_state & BUTTON_A) break;
+        else if (pad_state & BUTTON_B) {
+            sel = n;
+            break;
+        }
+        if (sel < 0) sel = 0;
+        else if (sel >= (int)n) sel = n-1;
+        if (sel < scroll) scroll = sel;
+        else if (sel == (int) n-1 && sel >= (int)(scroll + n_show - 1)) scroll = sel - n_show + 1;
+        else if (sel >= (int)(scroll + (n_show-1) - 1)) scroll = sel - (n_show-1) + 1;
+    }
+    
+    ClearScreenF(true, false, COLOR_STD_BG);
+    
+    return (sel >= (int)n) ? 0 : sel + 1;
+}
+
 u32 ShowHotkeyPrompt(u32 n, const char** options, const u32* keys, const char *format, ...) {
     char str[STRBUF_SIZE] = { 0 };
     char* ptr = str;
@@ -777,7 +868,7 @@ bool ShowInputPrompt(char* inputstr, u32 max_size, u32 resize, const char* alpha
 }
 
 bool ShowStringPrompt(char* inputstr, u32 max_size, const char *format, ...) {
-    const char* alphabet = " ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz(){}[]'`^,~*?!@#$%&0123456789=+-_.";
+    const char* alphabet = " aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ(){}[]'`^,~*?!@#$%&0123456789=+-_.";
     bool ret = false;
     va_list va;
     
@@ -934,11 +1025,13 @@ bool ShowProgress(u64 current, u64 total, const char* opstr)
     char tempstr[64];
     char progstr[64];
     
+    static u64 last_msec_elapsed = 0;
     static u64 last_sec_remain = 0;
     if (!current) {
         timer = timer_start();
         last_sec_remain = 0;
-    }
+    } else if (timer_msec(timer) < last_msec_elapsed + PROGRESS_REFRESH_RATE) return !CheckButton(BUTTON_B);
+    last_msec_elapsed = timer_msec(timer);
     u64 sec_elapsed = (total > 0) ? timer_sec( timer ) : 0;
     u64 sec_total = (current > 0) ? (sec_elapsed * total) / current : 0;
     u64 sec_remain = (!last_sec_remain) ? (sec_total - sec_elapsed) : ((last_sec_remain + (sec_total - sec_elapsed) + 1) / 2);
@@ -953,7 +1046,7 @@ bool ShowProgress(u64 current, u64 total, const char* opstr)
     DrawRectangle(MAIN_SCREEN, bar_pos_x + 2, bar_pos_y + 2, prog_width, bar_height - 4, COLOR_STD_FONT);
     DrawRectangle(MAIN_SCREEN, bar_pos_x + 2 + prog_width, bar_pos_y + 2, (bar_width-4) - prog_width, bar_height - 4, COLOR_STD_BG);
     
-    TruncateString(progstr, opstr, (bar_width / FONT_WIDTH_EXT) - 7, 8);
+    TruncateString(progstr, opstr, min(63, (bar_width / FONT_WIDTH_EXT) - 7), 8);
     snprintf(tempstr, 64, "%s (%lu%%)", progstr, prog_percent);
     ResizeString(progstr, tempstr, bar_width / FONT_WIDTH_EXT, 8, false);
     DrawString(MAIN_SCREEN, progstr, bar_pos_x, text_pos_y, COLOR_STD_FONT, COLOR_STD_BG, true);

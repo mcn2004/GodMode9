@@ -4,8 +4,6 @@
 #include "utf.h"
 #include "aes.h"
 
-#define VGAME_BUFFER_SIZE   0x200000 // at least 2MB, multiple of 0x200
-
 #define VFLAG_NO_CRYPTO     (1UL<<18)
 #define VFLAG_TAD           (1UL<<19)
 #define VFLAG_CIA_CONTENT   (1UL<<20)
@@ -78,6 +76,7 @@ static u64 vgame_type = 0;
 static u32 base_vdir = 0;
 
 static void* vgame_buffer = NULL;
+static u8* vgame_fs_buffer = NULL;
 
 static VirtualFile* templates_cia   = NULL;
 static VirtualFile* templates_tad   = NULL;
@@ -116,8 +115,6 @@ static FirmHeader* firm   = NULL;
 static NcsdHeader* ncsd   = NULL;
 static NcchHeader* ncch   = NULL;
 static ExeFsHeader* exefs = NULL;
-static u8* romfslv3       = NULL;
-static u8* nitrofs        = NULL;
 static RomFsLv3Index lv3idx;
 static u8 cia_titlekey[16];
 
@@ -437,11 +434,15 @@ bool BuildVGameCiaDir(void) {
         TmdContentChunk* content_list = cia->content_list;
         u32 content_count = getbe16(cia->tmd.content_count);
         u64 next_offset = info.offset_content;
+        u8* cnt_index = cia->header.content_index;
         for (u32 i = 0; (i < content_count) && (i < TMD_MAX_CONTENTS); i++) {
             const u16 index = getbe16(content_list[i].index);
             const u32 id = getbe32(content_list[i].id);
             const u64 size = getbe64(content_list[i].size);
             const u32 keyslot = (getbe16(content_list[i].type) & 0x1) ? index : (u32) -1;
+
+            if (!(cnt_index[index/8] & (1 << (7-(index%8)))))
+                continue; // skip missing contents
             
             u32 cnt_type = 0;
             if (size >= 0x200) {
@@ -497,11 +498,14 @@ bool BuildVGameNdsDir(void) {
         n++;
     }
     
-    // ARM9 section
+    // ARM9 section (+ ARM9 section footer)
     if (twl->arm9_size) {
+        u32 f = 0;
+        ReadGameImageBytes(&f, offset_nds + twl->arm9_rom_offset + twl->arm9_size, sizeof(u32));
         strncpy(templates[n].name, NAME_NDS_ARM9, 32);
         templates[n].offset = offset_nds + twl->arm9_rom_offset;
         templates[n].size = twl->arm9_size;
+        if (f == NDS_ARM9_FOOTER_MAGIC) templates[n].size += 0xC;
         templates[n].keyslot = 0xFF;
         templates[n].flags = 0;
         n++;
@@ -734,7 +738,9 @@ bool BuildVGameTadDir(void) {
 
 void DeinitVGameDrive(void) {
     if (vgame_buffer) free(vgame_buffer);
+    if (vgame_fs_buffer) free(vgame_fs_buffer);
     vgame_buffer = NULL;
+    vgame_fs_buffer = NULL;
 }
 
 u64 InitVGameDrive(void) { // prerequisite: game file mounted as image
@@ -768,25 +774,24 @@ u64 InitVGameDrive(void) { // prerequisite: game file mounted as image
     if (!base_vdir) return 0;
     
     // set up vgame buffer
-    vgame_buffer = (void*) malloc(VGAME_BUFFER_SIZE);
+    vgame_buffer = (void*) malloc(0x40000);
     if (!vgame_buffer) return 0;
     
-    templates_cia   = (VirtualFile*) ((u8*) vgame_buffer); // first 56kb reserved (enough for 1024 entries)
-    templates_firm  = (VirtualFile*) (((u8*) vgame_buffer) + 0xE000); // 2kb reserved (enough for 36 entries)
-    templates_ncsd  = (VirtualFile*) (((u8*) vgame_buffer) + 0xE800); // 2kb reserved (enough for 36 entries)
-    templates_ncch  = (VirtualFile*) (((u8*) vgame_buffer) + 0xF000); // 1kb reserved (enough for 18 entries)
-    templates_nds   = (VirtualFile*) (((u8*) vgame_buffer) + 0xF400); // 1kb reserved (enough for 18 entries)
-    templates_exefs = (VirtualFile*) (((u8*) vgame_buffer) + 0xF800); // 1kb reserved (enough for 18 entries)
-    templates_tad   = (VirtualFile*) (((u8*) vgame_buffer) + 0xFC00); // 1kb reserved (enough for 18 entries)
-    cia   = (CiaStub*)       (void*) (((u8*) vgame_buffer) + 0x10000); // 61kB reserved - should be enough by far
-    twl   = (TwlHeader*)     (void*) (((u8*) vgame_buffer) + 0x1F400); // 512 byte reserved (not the full thing)
-    a9l   = (FirmA9LHeader*) (void*) (((u8*) vgame_buffer) + 0x1F600); // 512 byte reserved
-    firm  = (FirmHeader*)    (void*) (((u8*) vgame_buffer) + 0x1F800); // 512 byte reserved
-    ncsd  = (NcsdHeader*)    (void*) (((u8*) vgame_buffer) + 0x1FA00); // 512 byte reserved
-    ncch  = (NcchHeader*)    (void*) (((u8*) vgame_buffer) + 0x1FC00); // 512 byte reserved
-    exefs = (ExeFsHeader*)   (void*) (((u8*) vgame_buffer) + 0x1FE00); // 512 byte reserved
-    romfslv3 = (((u8*) vgame_buffer) + 0x20000); // 1920kB reserved
-    nitrofs  = (((u8*) vgame_buffer) + 0x20000); // 1920kB reserved (FNT+FAT combined)
+    templates_cia   = (VirtualFile*) ((u8*) vgame_buffer); // first 184kb reserved (enough for 3364 entries)
+    templates_firm  = (VirtualFile*) (((u8*) vgame_buffer) + 0x2E000); // 2kb reserved (enough for 36 entries)
+    templates_ncsd  = (VirtualFile*) (((u8*) vgame_buffer) + 0x2E800); // 2kb reserved (enough for 36 entries)
+    templates_ncch  = (VirtualFile*) (((u8*) vgame_buffer) + 0x2F000); // 1kb reserved (enough for 18 entries)
+    templates_nds   = (VirtualFile*) (((u8*) vgame_buffer) + 0x2F400); // 1kb reserved (enough for 18 entries)
+    templates_exefs = (VirtualFile*) (((u8*) vgame_buffer) + 0x2F800); // 1kb reserved (enough for 18 entries)
+    templates_tad   = (VirtualFile*) (((u8*) vgame_buffer) + 0x2FC00); // 1kb reserved (enough for 18 entries)
+    cia   = (CiaStub*)       (void*) (((u8*) vgame_buffer) + 0x30000); // 61kB reserved - should be enough by far
+    twl   = (TwlHeader*)     (void*) (((u8*) vgame_buffer) + 0x3F400); // 512 byte reserved (not the full thing)
+    a9l   = (FirmA9LHeader*) (void*) (((u8*) vgame_buffer) + 0x3F600); // 512 byte reserved
+    firm  = (FirmHeader*)    (void*) (((u8*) vgame_buffer) + 0x3F800); // 512 byte reserved
+    ncsd  = (NcsdHeader*)    (void*) (((u8*) vgame_buffer) + 0x3FA00); // 512 byte reserved
+    ncch  = (NcchHeader*)    (void*) (((u8*) vgame_buffer) + 0x3FC00); // 512 byte reserved
+    exefs = (ExeFsHeader*)   (void*) (((u8*) vgame_buffer) + 0x3FE00); // 512 byte reserved
+    // filesystem stuff (RomFS / NitroFS) will be allocated on demand
     
     vgame_type = type;
     return type;
@@ -874,27 +879,28 @@ bool OpenVGameDir(VirtualDir* vdir, VirtualFile* ventry) {
         if (!BuildVGameExeFsDir()) return false;
     } else if ((vdir->flags & VFLAG_ROMFS) && (offset_romfs != vdir->offset)) {
         offset_nitro = (u64) -1; // mutually exclusive
-        // validate romFS magic
-        u8 magic[] = { ROMFS_MAGIC };
-        u8 header[sizeof(magic)];
-        if ((ReadNcchImageBytes(header, vdir->offset, sizeof(magic)) != 0) ||
-            (memcmp(magic, header, sizeof(magic)) != 0))
+        // validate ivfc header
+        RomFsIvfcHeader ivfc;
+        if ((ReadNcchImageBytes(&ivfc, vdir->offset, sizeof(RomFsIvfcHeader)) != 0) ||
+            (ValidateRomFsHeader(&ivfc, 0) != 0))
             return false;
         // validate lv3 header
-        RomFsLv3Header* lv3 = (RomFsLv3Header*) romfslv3;
-        for (u32 i = 1; i < 8; i++) {
-            offset_lv3 = vdir->offset + (i*OFFSET_LV3);
-            if (ReadNcchImageBytes(romfslv3, offset_lv3, sizeof(RomFsLv3Header)) != 0)
-                return false;
-            if (ValidateLv3Header(lv3, VGAME_BUFFER_SIZE - 0x20000) == 0)
-                break;
+        RomFsLv3Header lv3;
+        offset_lv3 = vdir->offset + GetRomFsLvOffset(&ivfc, 3);
+        if ((ReadNcchImageBytes(&lv3, offset_lv3, sizeof(RomFsLv3Header)) != 0) ||
+            (ValidateLv3Header(&lv3, 0) != 0)) {
             offset_lv3 = (u64) -1;
-        }
-        if ((offset_lv3 == (u64) -1) || (ReadNcchImageBytes(romfslv3, offset_lv3, lv3->offset_filedata) != 0))
             return false;
-        offset_lv3fd = offset_lv3 + lv3->offset_filedata;
+        }
+        // set up filesystem buffer
+        if (vgame_fs_buffer) free(vgame_fs_buffer);
+        vgame_fs_buffer = malloc(lv3.offset_filedata);
+        if (!vgame_fs_buffer || (offset_lv3 == (u64) -1) ||
+            (ReadNcchImageBytes(vgame_fs_buffer, offset_lv3, lv3.offset_filedata) != 0))
+            return false;
+        offset_lv3fd = offset_lv3 + lv3.offset_filedata;
         offset_romfs = vdir->offset;
-        BuildLv3Index(&lv3idx, romfslv3);
+        BuildLv3Index(&lv3idx, vgame_fs_buffer);
     } else if ((vdir->flags & VFLAG_NDS) && (offset_nds != vdir->offset)) {
         if ((ReadGameImageBytes(twl, vdir->offset, 0x200) != 0) ||
             (ValidateTwlHeader(twl) != 0))
@@ -909,8 +915,9 @@ bool OpenVGameDir(VirtualDir* vdir, VirtualFile* ventry) {
             return false;
         // load NitroFNT & NitroFAT to memory
         u32 size_nitro = (twl->fat_offset + twl->fat_size) - twl->fnt_offset;
-        if ((size_nitro > VGAME_BUFFER_SIZE - 0x20000) ||
-            (ReadGameImageBytes(nitrofs, vdir->offset + twl->fnt_offset, size_nitro) != 0))
+        if (vgame_fs_buffer) free(vgame_fs_buffer);
+        vgame_fs_buffer = malloc(size_nitro);
+        if (!vgame_fs_buffer || (ReadGameImageBytes(vgame_fs_buffer, vdir->offset + twl->fnt_offset, size_nitro) != 0))
             return false;
         offset_nitro = offset_nds;
     }
@@ -1001,8 +1008,8 @@ bool ReadVGameDirLv3(VirtualFile* vfile, VirtualDir* vdir) {
 }
 
 bool ReadVGameDirNitro(VirtualFile* vfile, VirtualDir* vdir) {
-    u8* fnt = nitrofs;
-    u8* fat = nitrofs + twl->fat_offset - twl->fnt_offset;
+    u8* fnt = vgame_fs_buffer;
+    u8* fat = vgame_fs_buffer + twl->fat_offset - twl->fnt_offset;
         
     vfile->name[0] = '\0';
     vfile->flags = VFLAG_NITRO | VFLAG_READONLY;
@@ -1150,7 +1157,7 @@ bool GetVGameNitroFilename(char* name, const VirtualFile* vfile, u32 n_chars) {
     if (!(vfile->flags & VFLAG_NITRO))
         return false;
     
-    u8* fnt_entry = nitrofs + (vfile->offset >> 32);
+    u8* fnt_entry = vgame_fs_buffer + (vfile->offset >> 32);
     u32 name_len = (*fnt_entry) & ~0x80;
     if (name_len >= n_chars) return false;
     memset(name, 0, n_chars);

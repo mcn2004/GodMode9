@@ -1,4 +1,5 @@
 #include "sha.h"
+#include "mmio.h"
 
 typedef struct
 {
@@ -17,12 +18,12 @@ void sha_update(const void* src, u32 size)
     
     while(size >= 0x40) {
         while(*REG_SHACNT & 1);
-        *((_sha_block*)REG_SHAINFIFO) = *((const _sha_block*)src32);
+        *((volatile _sha_block*)REG_SHAINFIFO) = *((const _sha_block*)src32);
         src32 += 16;
         size -= 0x40;
     }
     while(*REG_SHACNT & 1);
-    if(size) memcpy((void*)REG_SHAINFIFO, src32, size);
+    if(size) iomemcpy((void*)REG_SHAINFIFO, src32, size);
 }
 
 void sha_get(void* res) {
@@ -31,7 +32,7 @@ void sha_get(void* res) {
     *REG_SHACNT = (*REG_SHACNT & ~SHA_NORMAL_ROUND) | SHA_FINAL_ROUND;
     while(*REG_SHACNT & SHA_FINAL_ROUND);
     while(*REG_SHACNT & 1);
-    if (hash_size) memcpy(res, (void*)REG_SHAHASH, hash_size);
+    if (hash_size) iomemcpy(res, (void*)REG_SHAHASH, hash_size);
 }
 
 void sha_quick(void* res, const void* src, u32 size, u32 mode) {

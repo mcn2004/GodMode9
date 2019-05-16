@@ -107,11 +107,13 @@ echo $[TESTREP]
 # The 'filesel' command allows the user to choose a file inside a directory
 # The path is stored inside a variable, and the selection can be limited via wildcards
 # -d / --include_dirs allows to browse folders and select files inside
+# -x / --explorer uses new style file selector like main file explorer
 filesel "Please select a file" 0:/*.* SELFILE
 
 # 'dirsel' COMMAND
 # The 'dirsel' command works identically to the 'filesel' command, but allows selecting a dir
 # Note that a final slash ('/') is not expected here and there can be no wildcard pattern.
+# -x / --explorer uses new style file selector like main file explorer
 dirsel "Now, select a dir" 0: SELDIR
 echo "You selected $[SELFILE]\nand $[SELDIR]\nWe'll do nothing with either :)."
 
@@ -141,8 +143,9 @@ imgmount S:/ctrnand_full.bin
 # 'cp' COMMAND
 # Use 'cp' to copy a file or directory (recursively)
 # -h / --hash also adds a .sha file containing the files SHA256
-# -w / --overwite forces overwrite on existing files
-# -k / --skip forces skip on existing files
+# -w / --overwrite forces overwrite on existing files (disables -k and -p)
+# -k / --skip forces skip on existing files (disables -p)
+# -p / --append will append copied files to the end of existing files (disables -h)
 # -n / --no_cancel prevents user cancels (useful on critical operations)
 cp -h -w -n 7:/dbs/ticket.db  $[TESTPATH]
 
@@ -155,8 +158,8 @@ imgumount
 findnot $[TESTPATH]_???.rn RENPATH
 
 # 'mv' COMMAND
-# The 'mv command renames or moves a file or directory
-# -w / --overwite forces overwrite on existing files
+# The 'mv' command renames or moves a file or directory
+# -w / --overwrite forces overwrite on existing files (disables -k)
 # -k / --skip forces skip on existing files
 # -n / --no_cancel prevents user cancels (useful on critical operations)
 mv -w -k $[TESTPATH] $[RENPATH]
@@ -241,6 +244,12 @@ fset $[DUMMY]@100 48454c4c4f # 'HELLO'
 fget -e $[DUMMY]@100:5 OLLEH
 echo "This is 'HELLO', in hex and reverse:\n$[OLLEH]"
 
+# 'dumptxt' COMMAND
+# This command dumps the given text to a file
+# -p / --append appends text instead of writing a new file
+# dumptxt 0:/hello.txt HELLO
+# dumptxt -p 0:/hello.txt WORLD
+
 # 'fixcmac' COMMAND
 # Use this to fix the CMACs for a file or a whole folder (recursively)
 # This will count as success if a file does not contain a CMAC
@@ -268,6 +277,17 @@ verify S:/firm1.bin
 # -l / --legit force CIA to be legit (only works for legit system installed titles)
 # buildcia 0:/x.ncch
 
+# 'extrcode' COMMAND
+# You can extract the binary code from any file that contains it (NCSD, NCCH, CXI).
+# Specify the containing file and the file to write to.
+# If the code is compressed, it will be decompressed.
+# C:/titleid.3ds 0:/gm9/out/titleid.dec.code
+
+# 'cmprcode' COMMAND
+# Attempt to open a file as uncompressed binary code and compress it into the 3DS's reverse LZSS format.
+# Specify the source file and the file to write to.
+# 0:/gm9/out/titleid.dec.code 0:/gm9/out/titleid.code
+
 # 'sdump' COMMAND
 # This command dumps a supported file to the standard output directory (0:/gm9/out)
 # Supported files: encTitleKeys.bin, decTitleKeys.bin, seeddb.bin
@@ -290,6 +310,10 @@ verify S:/firm1.bin
 # This will apply the given BPM-formatted delta patch (argument 1) to the specified directory (argument 2)
 # to produce a directory containing patched files (argument 3).
 # applybpm 0:/example/patch.bpm 0:/data/originalfolder 0:/game/moddedfolder
+
+# 'textview' COMMAND
+# This will show a text file on screen, in a dedicated text viewer. Size restrictions apply (max 1MiB)
+# textview 0:/sometext.txt
 
 # 'boot' COMMAND
 # Use this command to chainload a compatible FIRM

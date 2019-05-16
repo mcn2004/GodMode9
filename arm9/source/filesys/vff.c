@@ -1,4 +1,3 @@
-#include "sddata.h"
 #include "virtual.h"
 #include "ffconf.h"
 #include "vff.h"
@@ -365,7 +364,7 @@ FRESULT fvx_findnopath (TCHAR* path, const TCHAR* pattern) {
     if (!n_rep) return (fvx_stat(path, NULL) == FR_OK) ? FR_NO_PATH : FR_OK;
     
     while (fvx_stat(path, NULL) == FR_OK) {
-        for (INT i = n_rep - 1; (i >= 0); i--) {
+        for (int i = n_rep - 1; (i >= 0); i--) {
             if (*(rep[i]) == '9') {
                 if (!i) return FR_NO_PATH;
                 *(rep[i]) = '0';

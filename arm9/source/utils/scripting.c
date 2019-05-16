@@ -60,7 +60,7 @@
 #define _FLG(c)             ((c >= 'a') ? (1 << (c - 'a')) : 0)
 
 #define IS_CTRLFLOW_CMD(id) ((id == CMD_ID_IF) || (id == CMD_ID_ELIF) || (id == CMD_ID_ELSE) || (id == CMD_ID_END) || \
-    (id == CMD_ID_GOTO) || (id == CMD_ID_LABELSEL) || (id == CMD_ID_KEYSEL) || \
+    (id == CMD_ID_GOTO) || (id == CMD_ID_LABELSEL) || \
     (id == CMD_ID_FOR) || (id == CMD_ID_NEXT))
 
 // command ids (also entry into the cmd_list array below)
@@ -75,7 +75,6 @@ typedef enum {
     CMD_ID_NEXT,
     CMD_ID_GOTO,
     CMD_ID_LABELSEL,
-    CMD_ID_KEYSEL,
     CMD_ID_KEYCHK,
     CMD_ID_ECHO,
     CMD_ID_QR,
@@ -103,20 +102,24 @@ typedef enum {
     CMD_ID_FSET,
     CMD_ID_SHA,
     CMD_ID_SHAGET,
+    CMD_ID_DUMPTXT,
     CMD_ID_FIXCMAC,
     CMD_ID_VERIFY,
     CMD_ID_DECRYPT,
     CMD_ID_ENCRYPT,
     CMD_ID_BUILDCIA,
     CMD_ID_EXTRCODE,
+    CMD_ID_CMPRCODE,
     CMD_ID_SDUMP,
     CMD_ID_APPLYIPS,
     CMD_ID_APPLYBPS,
     CMD_ID_APPLYBPM,
+    CMD_ID_TEXTVIEW,
     CMD_ID_ISDIR,
     CMD_ID_EXIST,
     CMD_ID_BOOT,
     CMD_ID_SWITCHSD,
+    CMD_ID_NEXTEMU,
     CMD_ID_REBOOT,
     CMD_ID_POWEROFF,
     CMD_ID_BKPT
@@ -144,21 +147,20 @@ Gm9ScriptCmd cmd_list[] = {
     { CMD_ID_FOR     , _CMD_FOR  , 2, _FLG('r') },
     { CMD_ID_NEXT    , _CMD_NEXT , 0, 0 },
     { CMD_ID_GOTO    , "goto"    , 1, 0 },
-    { CMD_ID_LABELSEL, "labelsel", 2, 0 },
-    { CMD_ID_KEYSEL  , "keysel"  , 2, 0 },
+    { CMD_ID_LABELSEL, "labelsel", 2, _FLG('k') },
     { CMD_ID_KEYCHK  , "keychk"  , 1, 0 },
     { CMD_ID_ECHO    , "echo"    , 1, 0 },
     { CMD_ID_QR      , "qr"      , 2, 0 },
     { CMD_ID_ASK     , "ask"     , 1, 0 },
     { CMD_ID_INPUT   , "input"   , 2, 0 },
-    { CMD_ID_FILESEL , "filesel" , 3, _FLG('d') },
-    { CMD_ID_DIRSEL  , "dirsel"  , 3, 0 },
+    { CMD_ID_FILESEL , "filesel" , 3, _FLG('d') | _FLG('x') },
+    { CMD_ID_DIRSEL  , "dirsel"  , 3, _FLG('x') },
     { CMD_ID_SET     , "set"     , 2, 0 },
     { CMD_ID_STRSPLIT, "strsplit", 3, _FLG('b') | _FLG('f')},
     { CMD_ID_STRREP  , "strrep"  , 3, 0 },
     { CMD_ID_CHK     , "chk"     , 2, _FLG('u') },
     { CMD_ID_ALLOW   , "allow"   , 1, _FLG('a') },
-    { CMD_ID_CP      , "cp"      , 2, _FLG('h') | _FLG('w') | _FLG('k') | _FLG('s') | _FLG('n')},
+    { CMD_ID_CP      , "cp"      , 2, _FLG('h') | _FLG('w') | _FLG('k') | _FLG('s') | _FLG('n') | _FLG('p')},
     { CMD_ID_MV      , "mv"      , 2, _FLG('w') | _FLG('k') | _FLG('s') | _FLG('n') },
     { CMD_ID_INJECT  , "inject"  , 2, _FLG('n') },
     { CMD_ID_FILL    , "fill"    , 2, 0 },
@@ -173,20 +175,24 @@ Gm9ScriptCmd cmd_list[] = {
     { CMD_ID_FSET    , "fset"    , 2, _FLG('e') },
     { CMD_ID_SHA     , "sha"     , 2, 0 },
     { CMD_ID_SHAGET  , "shaget"  , 2, 0 },
+    { CMD_ID_DUMPTXT , "dumptxt" , 2, _FLG('p') },
     { CMD_ID_FIXCMAC , "fixcmac" , 1, 0 },
     { CMD_ID_VERIFY  , "verify"  , 1, 0 },
     { CMD_ID_DECRYPT , "decrypt" , 1, 0 },
     { CMD_ID_ENCRYPT , "encrypt" , 1, 0 },
     { CMD_ID_BUILDCIA, "buildcia", 1, _FLG('l') },
     { CMD_ID_EXTRCODE, "extrcode", 2, 0 },
+    { CMD_ID_CMPRCODE, "cmprcode", 2, 0 },
     { CMD_ID_SDUMP   , "sdump",    1, _FLG('w') },
     { CMD_ID_APPLYIPS, "applyips", 3, 0 },
     { CMD_ID_APPLYBPS, "applybps", 3, 0 },
     { CMD_ID_APPLYBPM, "applybpm", 3, 0 },
+    { CMD_ID_TEXTVIEW, "textview", 1, 0 },
     { CMD_ID_ISDIR   , "isdir"   , 1, 0 },
     { CMD_ID_EXIST   , "exist"   , 1, 0 },
     { CMD_ID_BOOT    , "boot"    , 1, 0 },
     { CMD_ID_SWITCHSD, "switchsd", 1, 0 },
+    { CMD_ID_NEXTEMU , "nextemu" , 0, 0 },
     { CMD_ID_REBOOT  , "reboot"  , 0, 0 },
     { CMD_ID_POWEROFF, "poweroff", 0, 0 },
     { CMD_ID_BKPT    , "bkpt"    , 0, 0 }
@@ -418,6 +424,14 @@ void upd_var(const char* name) {
         if (!name || (strncmp(name, "DATESTAMP", _VAR_NAME_LEN) == 0)) set_var("DATESTAMP", env_date);
         if (!name || (strncmp(name, "TIMESTAMP", _VAR_NAME_LEN) == 0)) set_var("TIMESTAMP", env_time);
     }
+
+    // emunand base sector
+    if (!name || (strncmp(name, "EMUBASE", _VAR_NAME_LEN) == 0)) {
+        u32 emu_base = GetEmuNandBase();
+        char emu_base_str[8+1];
+        snprintf(emu_base_str, 8+1, "%08lX", emu_base);
+        set_var("EMUBASE", emu_base_str);
+    }
 }
 
 char* get_var(const char* name, char** endptr) {
@@ -538,14 +552,17 @@ u32 get_flag(char* str, u32 len, char* err_str) {
     else if (strncmp(str, "--flip_endian", len) == 0) flag_char = 'e';
     else if (strncmp(str, "--first", len) == 0) flag_char = 'f';
     else if (strncmp(str, "--hash", len) == 0) flag_char = 'h';
+    else if (strncmp(str, "--keysel", len) == 0) flag_char = 'k';
     else if (strncmp(str, "--skip", len) == 0) flag_char = 'k';
     else if (strncmp(str, "--legit", len) == 0) flag_char = 'l';
     else if (strncmp(str, "--no_cancel", len) == 0) flag_char = 'n';
     else if (strncmp(str, "--optional", len) == 0) flag_char = 'o';
+    else if (strncmp(str, "--append", len) == 0) flag_char = 'p';
     else if (strncmp(str, "--recursive", len) == 0) flag_char = 'r';
     else if (strncmp(str, "--silent", len) == 0) flag_char = 's';
     else if (strncmp(str, "--unequal", len) == 0) flag_char = 'u';
     else if (strncmp(str, "--overwrite", len) == 0) flag_char = 'w';
+    else if (strncmp(str, "--explorer", len) == 0) flag_char = 'x';
     
     if ((flag_char < 'a') && (flag_char > 'z')) {
         if (err_str) snprintf(err_str, _ERR_STR_LEN, "illegal flag");
@@ -923,7 +940,7 @@ bool run_cmd(cmd_id id, u32 flags, char** argv, char* err_str) {
             if (err_str) snprintf(err_str, _ERR_STR_LEN, "label not found");
         }
     }
-    else if ((id == CMD_ID_LABELSEL) || (id == CMD_ID_KEYSEL)) {
+    else if (id == CMD_ID_LABELSEL) {
         const char* options[_CHOICE_MAX_N] = { NULL };
         char* options_jmp[_CHOICE_MAX_N] = { NULL };
         char options_str[_CHOICE_MAX_N][_CHOICE_STR_LEN+1];
@@ -944,7 +961,7 @@ bool run_cmd(cmd_id id, u32 flags, char** argv, char* err_str) {
                 else if (ptr[i] == '_') choice[i] = ' ';
                 else choice[i] = ptr[i];
             }
-            if (id == CMD_ID_KEYSEL) {
+            if (flags & _FLG('k')) {
                 char* keystr = choice;
                 for (; *choice != ' ' && *choice != '\0'; choice++);
                 if (*choice != '\0') *(choice++) = '\0';
@@ -956,8 +973,8 @@ bool run_cmd(cmd_id id, u32 flags, char** argv, char* err_str) {
             if (++n_opt >= _CHOICE_MAX_N) break;
         }
         
-        u32 result = (id == CMD_ID_LABELSEL) ? ShowSelectPrompt(n_opt, options, "%s", argv[0]) :
-            ShowHotkeyPrompt(n_opt, options, options_keys, "%s", argv[0]);
+        u32 result = (flags & _FLG('k')) ? ShowHotkeyPrompt(n_opt, options, options_keys, "%s", argv[0]) :
+            ShowSelectPrompt(n_opt, options, "%s", argv[0]);
 
         if (!result) {
             ret = false;
@@ -1023,11 +1040,11 @@ bool run_cmd(cmd_id id, u32 flags, char** argv, char* err_str) {
             } else {
                 u32 flags_ext = (flags & _FLG('d')) ? 0 : NO_DIRS;
                 *(npattern++) = '\0';
-                ret = FileSelector(choice, argv[0], path, npattern, flags_ext);
+                ret = FileSelector(choice, argv[0], path, npattern, flags_ext, (flags & _FLG('x')));
                 if (err_str) snprintf(err_str, _ERR_STR_LEN, "fileselect abort");
             }
         } else {
-            ret = FileSelector(choice, argv[0], path, NULL, NO_FILES | SELECT_DIRS);
+            ret = FileSelector(choice, argv[0], path, NULL, NO_FILES | SELECT_DIRS, (flags & _FLG('x')));
             if (err_str) snprintf(err_str, _ERR_STR_LEN, "dirselect abort");
         }
         
@@ -1098,6 +1115,7 @@ bool run_cmd(cmd_id id, u32 flags, char** argv, char* err_str) {
         if (flags & _FLG('s')) flags_ext |= SILENT;
         if (flags & _FLG('w')) flags_ext |= OVERWRITE_ALL;
         else if (flags & _FLG('k')) flags_ext |= SKIP_ALL;
+        else if (flags & _FLG('p')) flags_ext |= APPEND_ALL;
         ret = PathMoveCopy(argv[1], argv[0], &flags_ext, false);
         if (err_str) snprintf(err_str, _ERR_STR_LEN, "copy fail");
     }
@@ -1260,6 +1278,15 @@ bool run_cmd(cmd_id id, u32 flags, char** argv, char* err_str) {
             if (err_str) snprintf(err_str, _ERR_STR_LEN, "sha write fail");
         }
     }
+    else if (id == CMD_ID_DUMPTXT) {
+        size_t offset = 0;
+        u32 len = strnlen(argv[1], _ARG_MAX_LEN);
+        if (flags & _FLG('p')) offset = FileGetSize(argv[0]);
+        if (!(ret = FileSetData(argv[0], argv[1], len, offset, offset == 0)) ||
+            !(ret = FileSetData(argv[0], "\n", 1, offset + len, false))) {
+            if (err_str) snprintf(err_str, _ERR_STR_LEN, "file write fail");
+        }
+    }
     else if (id == CMD_ID_FIXCMAC) {
         ShowString("Fixing CMACs...");
         ret = (RecursiveFixFileCmac(argv[0]) == 0);
@@ -1289,14 +1316,19 @@ bool run_cmd(cmd_id id, u32 flags, char** argv, char* err_str) {
     }
     else if (id == CMD_ID_EXTRCODE) {
         u64 filetype = IdentifyFileType(argv[0]);
-        if ((filetype&(GAME_NCCH|FLAG_CXI)) != (GAME_NCCH|FLAG_CXI)) {
+        if (!FTYPE_HASCODE(filetype)) {
             ret = false;
-            if (err_str) snprintf(err_str, _ERR_STR_LEN, "not a CXI file");
+            if (err_str) snprintf(err_str, _ERR_STR_LEN, "does not contain .code");
         } else {
             ShowString("Extracting .code, please wait...");
             ret = (ExtractCodeFromCxiFile(argv[0], argv[1], NULL) == 0);
             if (err_str) snprintf(err_str, _ERR_STR_LEN, "extract .code failed");
         }
+    }
+    else if (id == CMD_ID_CMPRCODE) {
+        ShowString("Compressing .code, please wait...");
+        ret = (CompressCode(argv[0], argv[1]) == 0);
+        if (err_str) snprintf(err_str, _ERR_STR_LEN, "compress .code failed");
     }
     else if (id == CMD_ID_SDUMP) {
         ret = false;
@@ -1336,6 +1368,10 @@ bool run_cmd(cmd_id id, u32 flags, char** argv, char* err_str) {
     else if (id == CMD_ID_APPLYBPM) {
         ret = (ApplyBPMPatch(argv[0], argv[1], argv[2]) == 0);
         if (err_str) snprintf(err_str, _ERR_STR_LEN, "apply BPM failed");
+    }
+    else if (id == CMD_ID_TEXTVIEW) {
+        ret = FileTextViewer(argv[0], false);
+        if (err_str) snprintf(err_str, _ERR_STR_LEN, "textviewer failed");
     }
     else if (id == CMD_ID_ISDIR) {
         DIR fdir;
@@ -1395,6 +1431,11 @@ bool run_cmd(cmd_id id, u32 flags, char** argv, char* err_str) {
         }
         InitSDCardFS();
         AutoEmuNandBase(true);
+        InitExtFS();
+    }
+    else if (id == CMD_ID_NEXTEMU) {
+        DismountDriveType(DRV_EMUNAND);
+        AutoEmuNandBase(false);
         InitExtFS();
     }
     else if (id == CMD_ID_REBOOT) {

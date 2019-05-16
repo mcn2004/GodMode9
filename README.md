@@ -11,11 +11,11 @@ __As always, be smart, keep backups, just to be safe__.
 
 
 ## Quick start guide
-These short instructions apply to all users who have [boot9strap](https://github.com/SciresM/boot9strap) and [Luma3DS](https://github.com/AuroraWright/Luma3DS) installed (Luma3DS set up with standard paths), which will be the majority of all GodMode9 users. Here's how to set it up quickly:
-* Rename `GodMode9.firm` (from the release archive) to `X_GodMode9.firm` (change `X` to the button of your choice) and put it into `sd:/luma/payloads/`
+The recommended bootloader for use with GodMode9 is [fastboot3DS](https://github.com/derrekr/fastboot3DS). There are [known issues for some users](https://github.com/d0k3/GodMode9/issues/466) when using the standard setup based on [boot9strap](https://github.com/SciresM/boot9strap) and [Luma3DS](https://github.com/AuroraWright/Luma3DS). If you insist on using that setup follow the instructions found in a [certain guide](https://3ds.hacks.guide). Here's how to set up GodMode9 (and fastboot3DS) up quickly:
+* Download [OpenFirmInstaller](https://github.com/d0k3/OpenFirmInstaller/releases/tag/v0.0.9) and follow the quick setup instructions found there.
 * Copy the `gm9` folder from the release archive to your SD card. Then, get good versions of `seeddb.bin` and `encTitleKeys.bin` from somewhere (don't ask me!) and put these two files into `sd:/gm9/support` (optional but recommended for full functionality).
 * It is also recommended you setup the RTC clock if you're running GodMode9 for the first time. Find the option via HOME button -> `More...`. Also keep in mind that you should fix your system OS clock afterwards.
-* Helpful hint #1: Go [here](https://3ds.guide/godmode9-usage) for step by steps on doing some common tasks in GodMode9. Especially users coming from Decrypt9WIP or Hourglass9 may find this to be helpful.
+* Helpful hint #1: Go [here](https://3ds.hacks.guide/godmode9-usage) for step by steps on doing some common tasks in GodMode9. Especially users coming from Decrypt9WIP or Hourglass9 may find this to be helpful.
 * Helpful hint #2: __Never unlock the red write permission level unless you know exactly what you're doing__. You will notice that prompt when it comes up, it features a completely red screen. It is recommended you stay on the yellow permission level or below at all times to be completely safe. Also read more on the write permissions system below.
 
 You may now run GodMode9 via holding the X Button (or any other button you chose) at startup. See below for a list of stuff you can do with it.
@@ -31,9 +31,9 @@ GodMode9 is designed to be intuitive, buttons leading to the results you'd expec
 * __\<R> button__: The \<R> button is the 'switch' button. It switches buttons to their secondary function. Notable exceptions are \<R+L> for a screenshot (works almost anywhere), \<R+LEFT> / \<R+RIGHT> to switch panes and \<R+DOWN> to reload the file listing.
 * __\<START> button__: Use the \<START> button to reboot from GodMode9. Use \<R+START> to poweroff your 3DS.
 * __\<SELECT> button__: The \<SELECT> button clears or restores the clipboard (depending on if it's empty or not).
-* __\<HOME> button__: The \<HOME> button enters the HOME menu, including the scripts / payloads submenus, options for formatting the SD, setting the RTC, and more.
+* __\<HOME> button__: The \<HOME> button enters the HOME menu, including the scripts / payloads submenus, options for formatting the SD, setting the RTC, and more. The \<POWER> button is an alternative way of entering the HOME menu.
 * __\<R+UP> combo__: This little known keycombo, when held at startup, pauses the GodMode9 boot so that you can stare at the splash screen for a little longer.
-* __\<R+LEFT combo>__: If you have installed GodMode9 as your bootloader, this keycombo enters the bootmenu. Hold on startup! If you built GodMode9 as SALTMODE and have it as a bootloader, the keycombo is simply the \<START> button.
+* __\<R+LEFT> combo__: If you have installed GodMode9 as your bootloader, this keycombo enters the bootmenu. Hold on startup! If you built GodMode9 as SALTMODE and have it as a bootloader, the keycombo is simply the \<START> button.
 
 
 ## How to build this / developer info
@@ -51,9 +51,9 @@ Same as [boot9strap](https://github.com/SciresM/boot9strap) or [fastboot3ds](htt
 
 
 ## Write permissions system
-GodMode9 provides a write permissions system, which will protect you from accidentually damaging your system, losing data and/or modifying important system data. To unlock a write permission, an unlock sequence must be entered. This is not possible by accident. The write permission system is based on colors and the top bar on the top screen will change color according to the current write permission level. No permission above the yellow level can be unlocked on SafeMode9.
+GodMode9 provides a write permissions system, which will protect you from accidentally damaging your system, losing data and/or modifying important system data. To unlock a write permission, an unlock sequence must be entered. This is not possible by accident. The write permission system is based on colors and the top bar on the top screen will change color according to the current write permission level. No permission above the yellow level can be unlocked on SafeMode9.
 * __Green:__ Modification to system files is not possible on this permission level. You can't edit or delete savegames and installed data. However, keep in mind that any non-system related or custom stuff on your SD card is not protected.
-* __Yellow:__ You can modify system files on this permission level. Data that is unique to your console and cannot be gotten from anywhere else is still not modifyable. Any damages you introduce can be fixed in software, but loss of savegames and installed data is possible if you are not careful. __A NAND backup is highly recommended starting at this level.__
+* __Yellow:__ You can modify system files on this permission level. Data that is unique to your console and cannot be gotten from anywhere else is still not modifiable. Any damages you introduce can be fixed in software, but loss of savegames and installed data is possible if you are not careful. __A NAND backup is highly recommended starting at this level.__
 * __Orange:__ This is similar to the yellow permission level, but, in addition, allows edits to console unique data. Any damages you introduce are still fixable in software, but if you play around with this, __having a NAND backup is an absolute requirement__.
 * __Red:__ The highest regular permission level. There are no limits to system file edits, and if you are not careful enough, you can brick your console and/or remove your A9LH/B9S installation. Bricks on this level may only be fixable in hardware. __If you don't have a NAND backup at this point, you seem to have a deathwish for your console__.
 * __Blue:__ This permission level is reserved for edits to system memory. While, most likely, nothing bad at all will happen, consequences of edits can be unforeseen. There is even a (albeit very small) chance of bricking your console, maybe even permanently. __Tread with caution on this level__.
@@ -97,7 +97,7 @@ With the possibilites GodMode9 provides, not everything may be obvious at first 
 
 ### Basic functionality
 * __Manage files on all your data storages__: You wouldn't have expected this, right? Included are all standard file operations such as copy, delete, rename files and create folders. Use the L button to mark multiple files and apply file operations to multiple files at once.
-* __Make screenshots__: Press R+L anywhere. Screenshots are in BMP format.
+* __Make screenshots__: Press R+L anywhere. Screenshots are stored in PNG format.
 * __Use multiple panes__: Press R+left|right. This enables you to stay in one location in the first pane and open another in the second pane.
 * __Search drives and folders__: Just press R+A on the drive / folder you want to search.
 * __Compare and verify files__: Press the A button on the first file, select `Calculate SHA-256`. Do the same for the second file. If the two files are identical, you will get a message about them being identical. On the SDCARD drive (`0:`) you can also write a SHA file, so you can check for any modifications at a later point.
@@ -108,11 +108,11 @@ With the possibilites GodMode9 provides, not everything may be obvious at first 
 * __Inject a file to another file__: Put exactly one file (the file to be injected from) into the clipboard (via the Y button). Press A on the file to be injected to. There will be an option to inject the first file into it.
 
 ### Scripting functionality
-* __Run .gm9 scripts from anywhere on your SD card__: You can run scripts in .gm9 format via the A button menu. .gm9 scripts use a shell-like language and can be edited in any text editor. For an overview of usable commands have a look into the `HelloScript.gm9` included in the release archive. *Don't run scripts from untrusted sources.*
+* __Run .gm9 scripts from anywhere on your SD card__: You can run scripts in .gm9 format via the A button menu. .gm9 scripts use a shell-like language and can be edited in any text editor. For an overview of usable commands have a look into the sample scripts included in the release archive. *Don't run scripts from untrusted sources.*
 * __Run .gm9 scripts via a neat menu__: Press the HOME button, select `More...` -> `Scripts...`. Any script you put into `0:/gm9/scripts` (subdirs included) will be found here. Scripts ran via this method won't have the confirmation at the beginning either.
 
 ### SD card handling
-* __Format your SD card / setup an EmuNAND__: Press the HOME button, select `More...` -> `SD format menu`. This also allows to setup a RedNAND or GW type EmuNAND on your SD card. You will get a warning prompt and an unlock sequence before any operation starts.
+* __Format your SD card / setup an EmuNAND__: Press the HOME button, select `More...` -> `SD format menu`. This also allows to setup a RedNAND (single/multi) or GW type EmuNAND on your SD card. You will get a warning prompt and an unlock sequence before any operation starts.
 * __Handle multiple EmuNANDs__: Press the HOME button, select `More...` -> `Switch EmuNAND` to switch between EmuNANDs / RedNANDs. (Only available on multi EmuNAND / RedNAND systems.)
 * __Run it without an SD card / unmount the SD card__: If no SD card is found, you will be offered to run without the SD card. You can also unmount and remount your SD card from the file system root at any point.
 * __Direct access to SD installed contents__: Just take a look inside the `A:`/`B:` drives. On-the-fly-crypto is taken care for, you can access this the same as any other content.
@@ -127,6 +127,7 @@ With the possibilites GodMode9 provides, not everything may be obvious at first 
 * __Batch mode for the above operations__: Just select multiple files of the same type via the L button, then press the A button on one of the selected files.
 * __Access any file inside NCCH / NCSD / CIA / FIRM / NDS images__: Just mount the file via the A button menu and browse to the file you want. For CDN / NUS content, prior decryption is required for full access.
 * __Rename your NCCH / NCSD / CIA / NDS / GBA files to proper names__: Find this feature inside the A button menu. Proper names include title id, game name, product code and region.
+* __Trim NCCH / NCSD / NDS / FIRM / NAND images__: This feature is found inside the A button menu. It allows you to trim excess data from supported file types. *Warning: Excess data may not be empty, bonus drives are stored there for NAND images, NCSD card2 images store savedata there, for FIRMs parts of the A9LH exploit may be stored there*.
 * __Dump 3DS / NDS / DSi type retail game cartridges__: Insert the cartridge and take a look inside the `C:` drive. You may also dump private headers from 3DS game cartridges.
 
 ### NAND handling
@@ -136,7 +137,7 @@ With the possibilites GodMode9 provides, not everything may be obvious at first 
 * __Transfer CTRNAND images between systems__: Transfer the file located at `S:/ctrnand_full.bin` (or `E:`/ `I:`). On the receiving system, press A, select `CTRNAND Options...`, then `Transfer to NAND`.
 * __Embed an essential backup right into a NAND dump__: This is available in the A button menu for NAND dumps. Essential backups contain NAND header, `movable.sed`, `LocalFriendCodeSeed_B`, `SecureInfo_A`, NAND CID and OTP. If your local SysNAND does not contain an embedded backup, you will be asked to do one at startup. To update the essential SysNAND backup at a later point in time, press A on `S:/nand.bin` and select `NAND image options...` -> `Update embedded backup`.
 * __Install an AES key database to your NAND__: For `aeskeydb.bin` files the option is found in `aeskeydb.bin options` -> `Install aeskeydb.bin`. Only the recommended key database can be installed (see above). With an installed key database, it is possible to run the GodMode9 bootloader completely from NAND.
-* __Install FIRM files to your NAND__: Found inside the A button menu for FIRM files, select `FIRM options` -> `Install FIRM`. __Use this with caution__ - installing an incompatible FIRM file will lead to a __brick__.
+* __Install FIRM files to your NAND__: Found inside the A button menu for FIRM files, select `FIRM options` -> `Install FIRM`. __Use this with caution__ - installing an incompatible FIRM file will lead to a __brick__. The FIRMs signature will automagically be replaced with a sighax signature to ensure compatibility.
 * __Actually use that extra NAND space__: You can setup a __bonus drive__ via the HOME menu, which will be available via drive letter `8:`. (Only available on systems that have the extra space.)
 * __Fix certain problems on your NANDs__: You can fix CMACs for a whole drive (works on `A:`, `B:`, `S:` and `E:`) via an entry in the R+A button menu, or even restore borked NAND headers back to a functional state (inside the A button menu of borked NANDs and available for `S:/nand_hdr.bin`). Recommended only for advanced users!
 

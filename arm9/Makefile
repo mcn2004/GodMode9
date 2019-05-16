@@ -5,13 +5,13 @@ TARGET := $(shell basename $(CURDIR))
 SOURCE := source
 BUILD  := build
 
-SUBARCH := -D$(PROCESSOR) -mcpu=arm946e-s -mtune=arm946e-s -mfloat-abi=soft -mthumb
+SUBARCH := -D$(PROCESSOR) -mcpu=arm946e-s -mtune=arm946e-s -mfloat-abi=soft -mno-thumb-interwork -marm
 INCDIRS := source source/common source/filesys source/crypto source/fatfs source/nand source/virtual source/game source/gamecart source/lodepng source/qrcodegen source/system source/utils
 INCLUDE := $(foreach dir,$(INCDIRS),-I"$(shell pwd)/$(dir)")
 
 ASFLAGS += $(SUBARCH) $(INCLUDE)
-CFLAGS  += $(SUBARCH) $(INCLUDE)
-LDFLAGS += $(SUBARCH) -Wl,-Map,$(TARGET).map
+CFLAGS  += $(SUBARCH) $(INCLUDE) -fno-builtin-memcpy -flto
+LDFLAGS += $(SUBARCH) -Wl,-Map,$(TARGET).map -flto
 
 include ../Makefile.common
 
@@ -39,3 +39,5 @@ $(BUILD)/%.o: $(SOURCE)/%.s
 	@mkdir -p "$(@D)"
 	@echo "[$(PROCESSOR)] $<"
 	@$(CC) -c $(ASFLAGS) -o $@ $<
+
+include $(call rwildcard, $(BUILD), *.d)

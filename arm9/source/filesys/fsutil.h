@@ -12,6 +12,7 @@
 #define ASK_ALL         (1UL<<6)
 #define SKIP_ALL        (1UL<<7)
 #define OVERWRITE_ALL   (1UL<<8)
+#define APPEND_ALL      (1UL<<9)
 
 // file selector flags
 #define NO_DIRS         (1UL<<0)
@@ -84,4 +85,4 @@ bool PathRename(const char* path, const char* newname);
 bool PathAttr(const char* path, u8 attr, u8 mask);
 
 /** Select a file **/
-bool FileSelector(char* result, const char* text, const char* path, const char* pattern, u32 flags);
+bool FileSelector(char* result, const char* text, const char* path, const char* pattern, u32 flags, bool new_style);
